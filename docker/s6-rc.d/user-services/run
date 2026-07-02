@@ -1,0 +1,32 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# user-services 런처. 볼륨의 /opt/data/workspace/services/<name>/run 을
+# s6-svscan 으로 감독 실행한다 — 서비스 추가/제거에 이미지 재빌드 불필요.
+#
+# 사용법: 호스트에서 ~/.hermes/workspace/services/<이름>/run 실행파일 생성.
+# 각 run 은 foreground 로 실행되어야 하며 (데몬화 금지), 크래시 시 s6 가
+# 자동 재시작한다. 새 서비스 디렉터리는 30초마다 자동 감지(-t 30000).
+#
+# 게이팅은 sshd/dashboard 와 동일 패턴: HERMES_USER_SERVICES 가 truthy 가
+# 아니면 exit 0 → finish 가 125 를 반환해 재시작하지 않음.
+
+case "${HERMES_USER_SERVICES:-}" in
+    1|true|TRUE|True|yes|YES|Yes) ;;
+    *) exit 0 ;;
+esac
+
+# with-contenv 가 HOME 을 /root 로 채우므로 hermes 기준으로 재설정
+export HOME=/opt/data
+
+SVDIR=/opt/data/workspace/services
+mkdir -p "$SVDIR"
+# s6-supervise 가 각 서비스 디렉터리 안에 event/supervise 디렉터리를 만들므로
+# 서비스 트리 전체가 hermes 소유여야 한다 (root 로 만든 서비스 대비 재귀 chown)
+if [ "$(id -u)" = 0 ]; then
+    chown hermes:hermes /opt/data/workspace 2>/dev/null
+    chown -R hermes:hermes "$SVDIR" 2>/dev/null
+fi
+
+# 서비스 프로세스는 hermes 유저로 실행 (이미 non-root 면 드롭 생략)
+[ "$(id -u)" = 0 ] || exec s6-svscan -t 30000 "$SVDIR"
+exec s6-setuidgid hermes s6-svscan -t 30000 "$SVDIR"

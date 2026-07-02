@@ -1,0 +1,11 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# user-services finish 스크립트. ./run 의 companion (dashboard/finish 패턴).
+# HERMES_USER_SERVICES 미설정/falsy → run 이 exit 0 → 여기서 125 반환:
+# s6-supervise 가 재시작하지 않고 슬롯을 down 으로 표시.
+# 활성 상태에서 s6-svscan 이 죽으면 0 반환 → 정상 재시작.
+
+case "${HERMES_USER_SERVICES:-}" in
+    1|true|TRUE|True|yes|YES|Yes) exit 0 ;;
+    *) exit 125 ;;
+esac

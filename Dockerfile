@@ -35,8 +35,13 @@ RUN apt-get update \
 # sshd: s6 supervised 서비스로 등록 (HERMES_SSHD=1 일 때만 기동)
 COPY docker/sshd_config /etc/ssh/sshd_config.hermes
 COPY docker/s6-rc.d/sshd/ /etc/s6-overlay/s6-rc.d/sshd/
+# user-services: 볼륨(/opt/data/workspace/services/*/run)의 사용자 서비스를
+# s6-svscan 으로 자동 실행·감독 (HERMES_USER_SERVICES=1 일 때만 기동)
+COPY docker/s6-rc.d/user-services/ /etc/s6-overlay/s6-rc.d/user-services/
 RUN chmod +x /etc/s6-overlay/s6-rc.d/sshd/run /etc/s6-overlay/s6-rc.d/sshd/finish \
-    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/sshd
+       /etc/s6-overlay/s6-rc.d/user-services/run /etc/s6-overlay/s6-rc.d/user-services/finish \
+    && touch /etc/s6-overlay/s6-rc.d/user/contents.d/sshd \
+       /etc/s6-overlay/s6-rc.d/user/contents.d/user-services
 
 EXPOSE 22
 

@@ -24,6 +24,8 @@ services:
       # 넣거나, 아래 HERMES_SSHD_AUTHORIZED_KEYS 로 주입.
       - HERMES_SSHD=1
       # - HERMES_SSHD_AUTHORIZED_KEYS=ssh-ed25519 AAAA... user@host
+      # 사용자 서비스 자동 실행: ~/.hermes/workspace/services/<이름>/run
+      - HERMES_USER_SERVICES=1
       # .env 파일 대신 환경변수를 직접 전달하려면 주석 해제:
       # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # - OPENAI_API_KEY=${OPENAI_API_KEY}
