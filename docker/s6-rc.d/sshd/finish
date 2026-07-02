@@ -1,0 +1,17 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# sshd finish 스크립트. ./run 의 companion (dashboard/finish 패턴).
+#
+# - HERMES_SSHD 미설정/falsy → run 이 exit 0 → 여기서 125 반환:
+#   s6-supervise 가 재시작하지 않고 슬롯을 down 으로 표시.
+# - run 이 100(영구 실패 sentinel: non-root 등)으로 종료 → 역시 125.
+# - 그 외(sshd 크래시 등) → 0 반환 → s6 가 정상 재시작.
+#
+# $1=run 종료코드, $2=시그널 번호
+
+[ "${1:-0}" = 100 ] && exit 125
+
+case "${HERMES_SSHD:-}" in
+    1|true|TRUE|True|yes|YES|Yes) exit 0 ;;
+    *) exit 125 ;;
+esac

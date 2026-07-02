@@ -1,0 +1,32 @@
+services:
+  hermes:
+    image: genichin/js-hermes-agent:latest
+    build:
+      context: .
+      args:
+        BASE_TAG: latest
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    ports:
+      - "8642:8642"   # gateway API
+      - "9119:9119"   # dashboard (HERMES_DASHBOARD=1일 때)
+      - "2222:22"     # sshd (HERMES_SSHD=1일 때)
+    volumes:
+      - ~/.hermes:/opt/data
+    environment:
+      - HERMES_DASHBOARD=1
+      # sshd: 공개키 인증만 허용. 공개키는 호스트의 ~/.hermes/.ssh/authorized_keys 에
+      # 넣거나, 아래 HERMES_SSHD_AUTHORIZED_KEYS 로 주입.
+      - HERMES_SSHD=1
+      # - HERMES_SSHD_AUTHORIZED_KEYS=ssh-ed25519 AAAA... user@host
+      # .env 파일 대신 환경변수를 직접 전달하려면 주석 해제:
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    shm_size: "1g"    # Playwright/브라우저 도구용
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"

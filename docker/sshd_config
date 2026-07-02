@@ -1,0 +1,27 @@
+# js-hermes-agent sshd 설정 (s6 sshd 서비스가 -f 로 지정해 사용)
+# 공개키 인증만 허용, hermes 유저만 접속 가능.
+
+Port 22
+
+# 호스트 키는 /opt/data 볼륨에 영속화 → 컨테이너를 재생성해도 키가 유지됨
+HostKey /opt/data/.ssh-host/ssh_host_ed25519_key
+HostKey /opt/data/.ssh-host/ssh_host_rsa_key
+
+PermitRootLogin no
+AllowUsers hermes
+
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+AuthorizedKeysFile .ssh/authorized_keys
+
+# /opt/data 가 호스트 볼륨 마운트라 소유권/퍼미션이 환경마다 달라질 수 있어
+# StrictModes 를 끔 (켜두면 마운트 퍼미션 때문에 공개키 인증이 조용히 실패하기 쉬움)
+StrictModes no
+
+UsePAM yes
+X11Forwarding no
+AllowTcpForwarding yes
+PrintMotd no
+
+Subsystem sftp internal-sftp

@@ -1,0 +1,47 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# sshd 서비스. 베이스 이미지의 dashboard 서비스와 같은 게이팅 패턴:
+# HERMES_SSHD 가 truthy 가 아니면 즉시 exit 0 하고, companion finish 가
+# 125 를 반환해 s6 가 재시작하지 않는다 (슬롯은 down 으로 표시).
+
+case "${HERMES_SSHD:-}" in
+    1|true|TRUE|True|yes|YES|Yes) ;;
+    *) exit 0 ;;
+esac
+
+# sshd 는 root 로만 구동 가능. 컨테이너를 non-root 로 띄운 경우
+# 영구 실패 sentinel(100)로 종료 → finish 가 125 를 반환해 재시작 루프 방지.
+if [ "$(id -u)" != 0 ]; then
+    echo "[sshd] container is not running as root; cannot start sshd (set HERMES_SSHD=0 or run as root)" >&2
+    exit 100
+fi
+
+# privilege separation 디렉터리 (/run 은 tmpfs 라 부팅마다 재생성 필요)
+mkdir -p /run/sshd
+chmod 755 /run/sshd
+
+# 호스트 키를 /opt/data 볼륨에 영속화 (컨테이너 재생성 시 host key 경고 방지)
+KEYDIR=/opt/data/.ssh-host
+mkdir -p "$KEYDIR"
+chmod 700 "$KEYDIR"
+for t in ed25519 rsa; do
+    k="$KEYDIR/ssh_host_${t}_key"
+    [ -f "$k" ] || ssh-keygen -q -t "$t" -f "$k" -N ""
+done
+
+# HERMES_SSHD_AUTHORIZED_KEYS 환경변수로 공개키 주입 지원.
+# 미설정 시 볼륨의 /opt/data/.ssh/authorized_keys (호스트의 ~/.hermes/.ssh/authorized_keys)를 그대로 사용.
+if [ -n "${HERMES_SSHD_AUTHORIZED_KEYS:-}" ]; then
+    mkdir -p /opt/data/.ssh
+    printf '%s\n' "$HERMES_SSHD_AUTHORIZED_KEYS" > /opt/data/.ssh/authorized_keys
+fi
+if [ -d /opt/data/.ssh ]; then
+    chown -R hermes:hermes /opt/data/.ssh
+    chmod 700 /opt/data/.ssh
+    [ -f /opt/data/.ssh/authorized_keys ] && chmod 600 /opt/data/.ssh/authorized_keys
+fi
+
+# -D: foreground (s6 supervised), -e: stderr 로깅
+exec /usr/sbin/sshd -D -e \
+    -f /etc/ssh/sshd_config.hermes \
+    -p "${HERMES_SSHD_PORT:-22}"
