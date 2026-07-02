@@ -71,6 +71,51 @@ ssh -p 2222 hermes@localhost
 - `HERMES_SSHD` 미설정 시 sshd 는 기동하지 않습니다 (dashboard 와 같은 게이팅 패턴).
 - 컨테이너 내부 포트는 `HERMES_SSHD_PORT`(기본 22)로 변경 가능.
 
+## compose.yaml 예제 (리포 클론 없이 이미지만 사용)
+
+Docker Hub 이미지(`genichin/js-hermes-agent`)만 받아서 쓰는 경우의 독립형 `compose.yaml` 예제입니다:
+
+```yaml
+services:
+  hermes:
+    image: genichin/js-hermes-agent:20260702   # 또는 :latest
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+    ports:
+      - "8642:8642"   # gateway API (OpenAI 호환)
+      - "9119:9119"   # 웹 대시보드
+      - "2222:22"     # SSH (hermes 유저, 공개키 인증만)
+    volumes:
+      - ~/.hermes:/opt/data        # 모든 상태(설정/세션/키)가 여기 저장됨
+    environment:
+      - HERMES_DASHBOARD=1
+      # 대시보드는 non-loopback 바인드 시 인증 필수:
+      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin
+      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=change-me
+      - HERMES_SSHD=1
+      # SSH 공개키 주입 (또는 ~/.hermes/.ssh/authorized_keys 에 직접 추가):
+      # - HERMES_SSHD_AUTHORIZED_KEYS=ssh-ed25519 AAAA... user@host
+      # API 키는 최초 1회 setup 위저드로 저장하거나 직접 전달:
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+    shm_size: "1g"    # Playwright/브라우저 도구용
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+```
+
+```sh
+# 최초 1회: API 키 설정
+docker run -it --rm -v ~/.hermes:/opt/data genichin/js-hermes-agent:20260702 setup
+
+# 기동
+docker compose up -d
+ssh -p 2222 hermes@<서버주소>
+```
+
 ## 업그레이드
 
 ```sh

@@ -16,6 +16,10 @@ services:
       - ~/.hermes:/opt/data
     environment:
       - HERMES_DASHBOARD=1
+      # 주의: 대시보드는 non-loopback 바인드 시 인증 제공자가 없으면 기동 자체가
+      # 실패함(fail-closed). 아래 basic auth 를 설정하거나 HERMES_DASHBOARD 를 끌 것.
+      - HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${DASHBOARD_USER:-admin}
+      - HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=${DASHBOARD_PASSWORD:?DASHBOARD_PASSWORD 환경변수를 설정하세요}
       # sshd: 공개키 인증만 허용. 공개키는 호스트의 ~/.hermes/.ssh/authorized_keys 에
       # 넣거나, 아래 HERMES_SSHD_AUTHORIZED_KEYS 로 주입.
       - HERMES_SSHD=1
