@@ -1,13 +1,13 @@
 IMAGE    ?= genichin/js-hermes-agent
 TAG      ?= latest
-BASE_TAG ?= latest
+HERMES_BRANCH ?= main
 PLATFORMS ?= linux/amd64,linux/arm64
 
 .PHONY: build push release run setup gateway logs stop
 
 # 로컬 아키텍처용 빌드
 build:
-	docker build --build-arg BASE_TAG=$(BASE_TAG) -t $(IMAGE):$(TAG) .
+	docker build --build-arg HERMES_BRANCH=$(HERMES_BRANCH) -t $(IMAGE):$(TAG) .
 
 # 로컬 빌드 결과 푸시 (docker login 필요)
 push: build
@@ -17,7 +17,7 @@ push: build
 release:
 	docker buildx build \
 		--platform $(PLATFORMS) \
-		--build-arg BASE_TAG=$(BASE_TAG) \
+		--build-arg HERMES_BRANCH=$(HERMES_BRANCH) \
 		-t $(IMAGE):$(TAG) \
 		--push .
 

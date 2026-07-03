@@ -1,0 +1,23 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# 대시보드 서비스 — 공식 이미지의 dashboard 서비스 재현.
+# HERMES_DASHBOARD 가 truthy 아니면 exit 0 → finish 가 125 (재시작 안 함).
+#
+# 주의: non-loopback 바인드는 인증 제공자가 필수 (없으면 기동 실패):
+#   HERMES_DASHBOARD_BASIC_AUTH_USERNAME + _PASSWORD (basic auth)
+#   또는 HERMES_DASHBOARD_OAUTH_CLIENT_ID (OAuth)
+
+case "${HERMES_DASHBOARD:-}" in
+    1|true|TRUE|True|yes|YES|Yes) ;;
+    *) exit 0 ;;
+esac
+
+export HOME=/opt/data
+cd /opt/data
+
+dash_host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
+dash_port="${HERMES_DASHBOARD_PORT:-9119}"
+
+[ "$(id -u)" = 0 ] || exec hermes dashboard --host "$dash_host" --port "$dash_port" --no-open
+exec s6-setuidgid hermes hermes dashboard \
+    --host "$dash_host" --port "$dash_port" --no-open

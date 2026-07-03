@@ -1,0 +1,8 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# dashboard finish — sshd/user-services 와 동일한 게이팅 패턴.
+
+case "${HERMES_DASHBOARD:-}" in
+    1|true|TRUE|True|yes|YES|Yes) exit 0 ;;
+    *) exit 125 ;;
+esac

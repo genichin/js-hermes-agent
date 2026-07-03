@@ -3,8 +3,6 @@ services:
     image: genichin/js-hermes-agent:latest
     build:
       context: .
-      args:
-        BASE_TAG: latest
     container_name: hermes
     restart: unless-stopped
     command: gateway run

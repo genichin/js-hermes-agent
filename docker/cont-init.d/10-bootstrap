@@ -1,0 +1,23 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# 부팅 부트스트랩 — 공식 이미지 stage2-hook 의 최소 재현.
+# /opt/data 는 호스트 볼륨 마운트일 수 있으므로:
+#  - 최상위 디렉터리만 hermes 소유로 (내용물은 건드리지 않음 — 호스트
+#    소유권 보존)
+#  - 표준 하위 디렉터리는 hermes 로 생성
+
+HH="${HERMES_HOME:-/opt/data}"
+
+if [ "$(id -u)" = 0 ]; then
+    chown hermes:hermes "$HH" 2>/dev/null || \
+        echo "[bootstrap] warn: chown $HH failed (rootless?)" >&2
+    s6-setuidgid hermes mkdir -p \
+        "$HH/workspace" \
+        "$HH/workspace/services" \
+        "$HH/logs" \
+        "$HH/sessions" 2>/dev/null || true
+else
+    mkdir -p "$HH/workspace" "$HH/workspace/services" "$HH/logs" "$HH/sessions" 2>/dev/null || true
+fi
+
+exit 0
