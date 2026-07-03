@@ -32,6 +32,12 @@ RUN apt-get update \
     #  - 대화형 셸을 sh → bash 로 변경
     && usermod -p '*' -s /bin/bash hermes
 
+# SSH 세션은 Docker ENV 를 상속받지 않으므로 (sshd 가 새 환경을 구성),
+# 베이스 이미지의 런타임 ENV(PATH, HERMES_HOME 등)를 /etc/environment 에 덤프.
+# sshd 는 UsePAM yes → pam_env 가 이 파일을 읽어 대화형/비대화형 세션 모두 적용됨.
+# 빌드 시점 env 를 그대로 쓰므로 베이스 이미지의 ENV 변경도 자동 반영.
+RUN env | grep -E '^(PATH|HERMES_|PYTHON|PLAYWRIGHT_|npm_config_)' > /etc/environment
+
 # sshd: s6 supervised 서비스로 등록 (HERMES_SSHD=1 일 때만 기동)
 COPY docker/sshd_config /etc/ssh/sshd_config.hermes
 COPY docker/s6-rc.d/sshd/ /etc/s6-overlay/s6-rc.d/sshd/
