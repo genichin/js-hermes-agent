@@ -10,6 +10,12 @@
 # hermes 유저로 강등 후 실행.
 set -e
 
+# with-contenv 가 복원하는 HOME 은 /init 기준 /root 다. s6-setuidgid 는
+# uid/gid 만 바꾸고 HOME 을 바꾸지 않으므로 여기서 hermes 홈으로 재설정
+# (공식 이미지 main-wrapper 와 동일). 없으면 ~ 경로가 /root 를 가리켜
+# setup 위저드 등이 PermissionError 로 죽는다.
+export HOME=/opt/data
+
 drop() { [ "$(id -u)" = 0 ] && set -- s6-setuidgid hermes "$@"; exec "$@"; }
 
 cd "${HERMES_HOME:-/opt/data}" 2>/dev/null || cd /
