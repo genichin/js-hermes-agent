@@ -105,6 +105,13 @@ ENV PATH=/opt/apps/hermes-agent/venv/bin:/opt/data/bin:/opt/data/.local/bin:/usr
 # /etc/environment 에 덤프 (대화형/비대화형 모두 적용)
 RUN env | grep -E '^(PATH|HERMES_|PLAYWRIGHT_|UV_)' > /etc/environment
 
+# 업스트림 호환 심볼릭 링크: hermes_cli/service_manager.py 가 s6 슬롯
+# run 스크립트에 `. /opt/hermes/.venv/bin/activate` 를 하드코딩한다
+# (공식 도커 이미지 레이아웃 전제). 코드 패치는 hermes update 때
+# 되돌아가므로 심볼릭 링크로 맞춘다.
+RUN mkdir -p /opt/hermes \
+    && ln -s /opt/apps/hermes-agent/venv /opt/hermes/.venv
+
 # ── s6 서비스: sshd, user-services, dashboard + 엔트리포인트 ────────────────
 COPY docker/sshd_config /etc/ssh/sshd_config.hermes
 COPY docker/s6-rc.d/ /etc/s6-overlay/s6-rc.d/
