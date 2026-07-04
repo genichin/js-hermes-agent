@@ -72,8 +72,14 @@ RUN useradd -u 10000 -U -m -d /opt/data -s /bin/bash hermes \
 # 인스톨러가 $HERMES_HOME/bin/uv 를 설치하지만 이것도 볼륨에 가려진다 —
 # 런타임의 hermes_cli/managed_uv.py 가 없으면 자동 재설치하므로 문제 없음
 # (오히려 볼륨에 영속됨).
+# UV_PYTHON_INSTALL_DIR 를 볼륨 밖으로 고정하는 것이 필수: 기본값은
+# ~/.local/share/uv/python(= /opt/data 볼륨 안)이라 venv 의 python 심볼릭
+# 링크가 bind mount 시 끊겨 "unable to exec hermes" 로 기동 불능이 된다.
+# 런타임 ENV 로도 유지해 hermes update 의 파이썬 해석도 같은 위치를 쓰게 한다.
 ENV HERMES_HOME=/opt/data \
-    PLAYWRIGHT_BROWSERS_PATH=/opt/apps/hermes-agent/.playwright
+    PLAYWRIGHT_BROWSERS_PATH=/opt/apps/hermes-agent/.playwright \
+    UV_PYTHON_INSTALL_DIR=/opt/apps/uv/python \
+    UV_PYTHON_BIN_DIR=/opt/apps/uv/bin
 USER hermes
 RUN curl -fsSL https://hermes-agent.nousresearch.com/install.sh \
     | bash -s -- --dir /opt/apps/hermes-agent --branch "${HERMES_BRANCH}" \
@@ -97,7 +103,7 @@ ENV PATH=/opt/apps/hermes-agent/venv/bin:/opt/data/bin:/opt/data/.local/bin:/usr
     HERMES_WRITE_SAFE_ROOT=/opt/data
 # sshd(UsePAM yes) 세션은 Docker ENV 를 상속받지 않으므로 pam_env 가 읽는
 # /etc/environment 에 덤프 (대화형/비대화형 모두 적용)
-RUN env | grep -E '^(PATH|HERMES_|PLAYWRIGHT_)' > /etc/environment
+RUN env | grep -E '^(PATH|HERMES_|PLAYWRIGHT_|UV_)' > /etc/environment
 
 # ── s6 서비스: sshd, user-services, dashboard + 엔트리포인트 ────────────────
 COPY docker/sshd_config /etc/ssh/sshd_config.hermes
