@@ -20,4 +20,29 @@ else
     mkdir -p "$HH/workspace" "$HH/workspace/services" "$HH/logs" "$HH/sessions" 2>/dev/null || true
 fi
 
+# config 스키마 마이그레이션 (이미지 업그레이드 후 볼륨 config 정합성 —
+# 공식 stage2-hook 과 동일. HERMES_SKIP_CONFIG_MIGRATION=1 로 건너뜀)
+APP=/opt/apps/hermes-agent
+if [ -f "$HH/config.yaml" ] && [ "${HERMES_SKIP_CONFIG_MIGRATION:-}" != 1 ] \
+   && [ -f "$APP/scripts/docker_config_migrate.py" ]; then
+    if [ "$(id -u)" = 0 ]; then
+        s6-setuidgid hermes "$APP/venv/bin/python" "$APP/scripts/docker_config_migrate.py" \
+            || echo "[bootstrap] warn: config migration failed; continuing" >&2
+    else
+        "$APP/venv/bin/python" "$APP/scripts/docker_config_migrate.py" \
+            || echo "[bootstrap] warn: config migration failed; continuing" >&2
+    fi
+fi
+
+# gateway_state.json 최초 부팅 시딩 (공식 이미지와 동일 계약):
+# 빈 볼륨에서는 리컨실러가 gateway-default 슬롯을 DOWN 으로 등록한다.
+# 첫 부팅부터 게이트웨이를 띄우려면 HERMES_GATEWAY_BOOTSTRAP_STATE=running.
+# [ ! -f ] 가드가 핵심 — 이후 부팅에서는 저장된 상태가 우선.
+if [ ! -f "$HH/gateway_state.json" ] && \
+        [ "${HERMES_GATEWAY_BOOTSTRAP_STATE:-}" = "running" ]; then
+    printf '{"gateway_state":"running"}\n' > "$HH/gateway_state.json"
+    chown hermes:hermes "$HH/gateway_state.json" 2>/dev/null || true
+    chmod 644 "$HH/gateway_state.json"
+fi
+
 exit 0

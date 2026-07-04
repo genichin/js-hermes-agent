@@ -1,0 +1,27 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# 공식 이미지의 02-reconcile-profiles 이식.
+# /run/service (tmpfs, 재시작마다 초기화)에 프로필별 gateway s6 슬롯을
+# 재등록한다 — 이것이 없으면 `hermes gateway start/run` 이
+# "no such gateway 'default'" 로 실패한다.
+# 마지막 기록 상태가 running 인 게이트웨이만 자동 기동
+# (hermes_cli/container_boot.py 참고).
+
+set -e
+
+# 동적 scandir 을 hermes 가 쓸 수 있게 (런타임 profile create/delete 등록용)
+chown hermes:hermes /run/service 2>/dev/null || true
+
+# svscan 제어 FIFO 도 hermes 가 쓸 수 있게 (s6-svscanctl -a)
+if [ -d /run/service/.s6-svscan ]; then
+    for entry in control lock; do
+        if [ -e "/run/service/.s6-svscan/$entry" ]; then
+            chown hermes:hermes "/run/service/.s6-svscan/$entry" 2>/dev/null || true
+        fi
+    done
+fi
+
+PY=/opt/apps/hermes-agent/venv/bin/python
+
+[ "$(id -u)" = 0 ] || exec "$PY" -m hermes_cli.container_boot
+exec s6-setuidgid hermes "$PY" -m hermes_cli.container_boot

@@ -1,0 +1,40 @@
+#!/command/with-contenv sh
+# shellcheck shell=sh
+# 공식 이미지의 015-supervise-perms 이식.
+# 정적 s6 서비스(dashboard 등)의 supervise/ 트리를 hermes 소유로 바꿔
+# hermes 유저가 s6-svstat/s6-svc 로 상태 조회·제어할 수 있게 한다.
+# (s6-supervise 는 PID1(root)이 띄우므로 기본 0700 root 소유가 됨)
+
+set -eu
+
+SVC_ROOT=/run/s6-rc/servicedirs
+
+if [ ! -d "$SVC_ROOT" ]; then
+    echo "[supervise-perms] $SVC_ROOT not present; skipping"
+    exit 0
+fi
+
+for svc in "$SVC_ROOT"/*; do
+    [ -d "$svc" ] || continue
+    name=$(basename "$svc")
+
+    # s6-overlay 내부 서비스는 root 전용 유지
+    case "$name" in
+        s6rc-*|s6-linux-*) continue ;;
+    esac
+
+    if [ -d "$svc/supervise" ]; then
+        chown -R hermes:hermes "$svc/supervise" 2>/dev/null || \
+            echo "[supervise-perms] could not chown $svc/supervise"
+        chmod 0710 "$svc/supervise" 2>/dev/null || true
+        if [ -p "$svc/supervise/control" ]; then
+            chmod 0660 "$svc/supervise/control" 2>/dev/null || true
+        fi
+    fi
+
+    if [ -d "$svc/event" ]; then
+        chown -R hermes:hermes "$svc/event" 2>/dev/null || true
+    fi
+done
+
+exit 0
